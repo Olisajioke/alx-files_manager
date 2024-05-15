@@ -15,5 +15,6 @@ router.get('/users/me', UsersController.getMe);
 router.post('/files', FilesController.postUpload);
 router.put('/files/:id/publish', FilesController.putPublish);
 router.put('/files/:id/unpublish', FilesController.putUnpublish); // New endpoint
+router.get('/files/:id/data', FilesController.getFile);
 
 export default router;

@@ -1,7 +1,30 @@
 import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
+import userQueue from '../utils/userQueue'; // Import userQueue for background processing
 
 const UsersController = {
+    async postUsers(req, res) {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Missing email or password' });
+        }
+
+        // Check if the email already exists
+        const existingUser = await dbClient.usersCollection.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ error: 'Email already exists' });
+        }
+
+        // Create new user in MongoDB
+        const newUser = await dbClient.usersCollection.insertOne({ email, password });
+
+        // Add a job to the userQueue for sending welcome email
+        userQueue.add({ userId: newUser.insertedId, email });
+
+        return res.status(201).json({ id: newUser.insertedId, email });
+    },
+
     async getMe(req, res) {
         const { 'x-token': token } = req.headers;
 

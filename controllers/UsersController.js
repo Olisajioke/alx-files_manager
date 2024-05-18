@@ -6,27 +6,30 @@ const UsersController = {
     async postUsers(req, res) {
         const { email, password } = req.body;
 
-        if (!email || !password) {
-            return res.status(400).json({ error: 'Missing email or password' });
+        if (!email) {
+            return res.status(400).json({ error: 'Missing email' });
+        }
+        if (!password) {
+            return res.status(400).json({ error: 'Missing password' });
         }
 
         // Check if the email already exists
         const existingUser = await dbClient.usersCollection.findOne({ email });
         if (existingUser) {
-            return res.status(400).json({ error: 'Email already exists' });
+            return res.status(400).json({ error: 'Already exist' });
         }
 
         // Create new user in MongoDB
         const newUser = await dbClient.usersCollection.insertOne({ email, password });
 
-        // Add a job to the userQueue for sending welcome email
+        // Add a job to the userQueue for sending a welcome email
         userQueue.add({ userId: newUser.insertedId, email });
 
         return res.status(201).json({ id: newUser.insertedId, email });
     },
 
     async getMe(req, res) {
-        const { 'x-token': token } = req.headers;
+        const token = req.headers['x-token'];
 
         if (!token) {
             return res.status(401).json({ error: 'Unauthorized' });
@@ -40,7 +43,6 @@ const UsersController = {
 
         // Retrieve user from MongoDB
         const user = await dbClient.usersCollection.findOne({ _id: userId });
-
         if (!user) {
             return res.status(401).json({ error: 'Unauthorized' });
         }

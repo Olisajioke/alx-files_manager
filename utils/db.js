@@ -1,41 +1,49 @@
-import { MongoClient } from 'mongodb';
+const { MongoClient } = require('mongodb');
+
+const host = process.env.DB_HOST || 'localhost';
+const port = process.env.DB_PORT || 27017;
+const database = process.env.DB_DATABASE || 'files_manager';
+const url = `mongodb://${host}:${port}`;
 
 class DBClient {
   constructor() {
-    const {
-      DB_HOST = 'localhost',
-      DB_PORT = 27017,
-      DB_DATABASE = 'files_manager',
-    } = process.env;
+    this.client = new MongoClient(url, { useUnifiedTopology: true });
+    this.db = null;
+    this.usersCollection = null;
+    this.filesCollection = null;
+    this.connect();
+  }
 
-    // MongoDB connection URI
-    this.URI = `mongodb://${DB_HOST}:${DB_PORT}/${DB_DATABASE}`;
-
-    // Initialize MongoDB client
-    this.client = new MongoClient(this.URI, { useUnifiedTopology: true });
-    this.client.connect();
-
-    // MongoDB collections
-    this.usersCollection = this.client.db().collection('users');
-    this.filesCollection = this.client.db().collection('files');
+  async connect() {
+    try {
+      await this.client.connect();
+      this.db = this.client.db(database);
+      this.usersCollection = this.db.collection('users');
+      this.filesCollection = this.db.collection('files');
+      console.log('Connected to MongoDB');
+    } catch (err) {
+      console.error('Failed to connect to MongoDB', err);
+    }
   }
 
   isAlive() {
-    // Check if the MongoDB client is connected
-    return this.client.isConnected();
+    return !!this.db;
   }
 
   async nbUsers() {
-    // Get the number of documents in the users collection
+    if (!this.usersCollection) {
+      throw new Error('Database not initialized');
+    }
     return this.usersCollection.countDocuments();
   }
 
   async nbFiles() {
-    // Get the number of documents in the files collection
+    if (!this.filesCollection) {
+      throw new Error('Database not initialized');
+    }
     return this.filesCollection.countDocuments();
   }
 }
 
 const dbClient = new DBClient();
-
-export default dbClient;
+module.exports = dbClient;

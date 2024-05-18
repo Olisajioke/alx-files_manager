@@ -12,7 +12,7 @@ const startServer = async () => {
   // Wait for the DB connection to be ready
   while (!dbClient.isAlive()) {
     console.log('Waiting for database connection...');
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before checking again
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second before checking again
   }
 
   app.listen(port, () => {

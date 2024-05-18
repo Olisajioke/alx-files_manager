@@ -1,9 +1,10 @@
 import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
-import userQueue from '../utils/userQueue'; // Import userQueue for background processing
+import userQueue from '../utils/userQueue';
+import { createHash } from 'crypto';
 
 const UsersController = {
-    async postUsers(req, res) {
+    async postNew(req, res) {
         const { email, password } = req.body;
 
         if (!email) {
@@ -13,14 +14,22 @@ const UsersController = {
             return res.status(400).json({ error: 'Missing password' });
         }
 
+        // Ensure database is initialized
+        if (!dbClient.isAlive() || !dbClient.usersCollection) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
+
         // Check if the email already exists
         const existingUser = await dbClient.usersCollection.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ error: 'Already exist' });
         }
 
+        // Hash the password with SHA1
+        const hashedPassword = createHash('sha1').update(password).digest('hex');
+
         // Create new user in MongoDB
-        const newUser = await dbClient.usersCollection.insertOne({ email, password });
+        const newUser = await dbClient.usersCollection.insertOne({ email, password: hashedPassword });
 
         // Add a job to the userQueue for sending a welcome email
         userQueue.add({ userId: newUser.insertedId, email });
@@ -39,6 +48,11 @@ const UsersController = {
         const userId = await redisClient.get(`auth_${token}`);
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // Ensure database is initialized
+        if (!dbClient.isAlive() || !dbClient.usersCollection) {
+            return res.status(500).json({ error: 'Database not initialized' });
         }
 
         // Retrieve user from MongoDB
